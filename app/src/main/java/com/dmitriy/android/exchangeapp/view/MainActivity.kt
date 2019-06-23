@@ -1,6 +1,6 @@
 package com.dmitriy.android.exchangeapp.view
 
-import android.support.v7.app.AppCompatActivity
+import android.content.Intent
 import android.os.Bundle
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
@@ -11,13 +11,12 @@ import com.dmitriy.android.exchangeapp.view.adapter.CurrencyListAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.lang.Exception
 
-class MainActivity : CoroutineAppCompatActivity(){
+class MainActivity : CoroutineAppCompatActivity(),ItemClickListener{
 
+
+    private val CURRENCY_DATA = "CURRENCY_DATA"
     private lateinit var  layoutManager : LinearLayoutManager
     private lateinit var adapter : CurrencyListAdapter
     private val BASE_URL = "statdirectory/exchange"
@@ -28,17 +27,23 @@ class MainActivity : CoroutineAppCompatActivity(){
 
         initList()
         val apiService = NBUApiService.create()
-
-        launch {
-            try{
-                val response = apiService.getCurrentCurrency(baseUrl = BASE_URL,value = "")
-                if(response.isSuccessful) this@MainActivity.onResponse(response.body()!!)
-                else this@MainActivity.onFailure(response.errorBody())
-            }catch (e:Exception){
-                Log.i("ExchangeApp","exception" + e.toString())
+        if (savedInstanceState != null) adapter.setCurrencyList(savedInstanceState.getParcelableArrayList(CURRENCY_DATA))
+        else {
+            launch {
+                try {
+                    val response = apiService.getCurrentCurrency(baseUrl = BASE_URL, value = "")
+                    if (response.isSuccessful) this@MainActivity.onResponse(response.body()!!)
+                    else this@MainActivity.onFailure(response.errorBody())
+                } catch (e: Exception) {
+                    Log.i("ExchangeApp", "exception" + e.toString())
+                }
             }
-
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        outState?.putParcelableArrayList(CURRENCY_DATA, adapter.currendList)
+        super.onSaveInstanceState(outState)
     }
 
     private fun initList() {
@@ -46,6 +51,7 @@ class MainActivity : CoroutineAppCompatActivity(){
         list.layoutManager = layoutManager
         adapter= CurrencyListAdapter()
         list.adapter = adapter
+        adapter.setItemClickListener(this)
     }
 
 
@@ -55,5 +61,10 @@ class MainActivity : CoroutineAppCompatActivity(){
 
     fun onResponse(data:List<Currency>) {
         adapter.setCurrencyList(data)
+    }
+
+    override fun onItemClick(currencyItem: Currency?) {
+        val intent = DetailActivity.newIntent(this, currencyItem)
+        startActivity(intent)
     }
 }
